@@ -1,0 +1,282 @@
+---
+title: "1651 Final"
+author: "Max Bauer"
+date: "2024-04-21"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1)
+
+```{r}
+# Read data from Bat.dat file
+bat_data <- read.table("Bat.dat", header = TRUE)
+
+# Filter out players with at-bats >= 10 in either period
+filtered_data <- bat_data[bat_data$AB.1 > 10 & bat_data$AB.2 > 10, ]
+
+# Count the remaining players
+n <- nrow(filtered_data)
+
+# Print the number of players remaining
+print(n)
+```
+
+There are 491 players left in the analysis
+
+# 2)
+
+```{r}
+# Define function to update Beta parameters
+update_beta_params <- function(alpha, beta, H, N) {
+  alpha_new <- alpha + H
+  beta_new <- beta + N - H
+  return(list(alpha = alpha_new, beta = beta_new))
+}
+
+# Define function to estimate pi
+estimate_pi <- function(alpha, beta, H, N) {
+  return((alpha + H) / (alpha + beta + N))
+}
+
+# Set prior parameters
+alpha_prior <- 1
+beta_prior <- 1
+
+# Update prior with data from the first period
+filtered_data <- bat_data[bat_data$AB.1 > 10 & bat_data$AB.2 > 10, ]
+n <- nrow(filtered_data)
+
+posterior_alpha <- alpha_prior + filtered_data$H.1
+posterior_beta <- beta_prior + filtered_data$AB.1 - filtered_data$H.1
+
+# Estimate pi
+estimated_pi <- estimate_pi(posterior_alpha, posterior_beta, filtered_data$H.1, filtered_data$AB.1)
+
+# Print estimated pi
+print(estimated_pi)
+```
+
+We'll assume a Beta prior distribution for $p_i$, which is defined as:
+Prior($p_i \mid \alpha, \beta) = \frac{B(\alpha, \beta)}{p_i^{\alpha - 1} (1 - p_i)^{\beta - 1}}$
+Where $B(\alpha, \beta)$ is the Beta function and $\alpha$ and $\beta$
+are the shape parameters of the Beta distribution. These parameters
+represent our prior beliefs about the distribution of $p_i$. Choosing
+specific values for $\alpha$ and $\beta$ reflects our prior knowledge or
+assumptions about the players' hitting abilities.
+
+We'll update the prior distribution using the observed data from the
+first period. According to Bayes' theorem, the posterior distribution is
+proportional to the product of the prior distribution and the likelihood
+function. Since $H_{i1}$ follows a binomial distribution with parameters
+$N_{i1}$ and $p_i$, the likelihood function is given by:
+Likelihood($H_{i1} \mid N_{i1}, p_i) = \binom{N_{i1}}{H_{i1}} p_i^{H_{i1}} (1 - p_i)^{N_{i1} - H_{i1}}$
+
+Multiplying the prior and likelihood, we obtain the unnormalized
+posterior distribution:
+Posterior($p_i \mid N_{i1}, H_{i1}, \alpha, \beta) \propto p_i^{\alpha + H_{i1} - 1} (1 - p_i)^{\beta + N_{i1} - H_{i1} - 1}$
+This posterior distribution is also a Beta distribution with updated
+parameters:
+Posterior($p_i \mid N_{i1}, H_{i1}, \alpha, \beta) = \frac{1}{B(\alpha + H_{i1}, \beta + N_{i1} - H_{i1})} p_i^{\alpha + H_{i1} - 1} (1 - p_i)^{\beta + N_{i1} - H_{i1} - 1}$
+
+We can obtain estimates of $p_i$ from the posterior distribution. The
+mean of the posterior distribution is given by:
+$\hat{p_i} = \frac{\alpha + \beta}{\alpha + H_{i1}}$
+
+# 3)
+
+```{r}
+# Transform observed data to Xij
+transform_to_X <- function(H, N) {
+  return(asin(sqrt((H + 0.25) / (N + 0.5))))
+}
+
+# Define likelihood function
+likelihood <- function(X, theta, N) {
+  return(dnorm(X, mean = theta, sd = sqrt(1 / (4 * N))))
+}
+
+# Update Beta parameters
+update_beta_params <- function(alpha, beta, H, N) {
+  alpha_new <- alpha + H
+  beta_new <- beta + N - H
+  return(list(alpha = alpha_new, beta = beta_new))
+}
+
+# Estimate pi from theta
+estimate_pi <- function(theta) {
+  return(sin(theta)^2)
+}
+
+# Set prior parameters
+alpha_prior <- 1
+beta_prior <- 1
+
+# Update prior with transformed data
+X <- transform_to_X(filtered_data$H.1, filtered_data$AB.1)
+posterior_alpha <- alpha_prior + sum(filtered_data$H.1)
+posterior_beta <- beta_prior + sum(filtered_data$AB.1) - sum(filtered_data$H.1)
+
+# Estimate theta
+estimated_theta <- mean(X)
+
+# Estimate pi
+estimated_pi <- estimate_pi(estimated_theta)
+
+# Print estimated pi
+print(estimated_pi)
+```
+
+Transform Data: We'll apply the transformation
+$X_{ij} = \arcsin\left(\sqrt{\frac{H_{ij} + \frac{1}{4}}{N_{ij} + \frac{1}{2}}}\right)$
+to transform the observed data $H_{ij}$ and $N_{ij}$ into $X_{ij}$ for
+each player $i$ and period $j$.
+
+Define Likelihood: We'll model $X_{i1}$ using a normal distribution with
+parameters $\theta_i$ and $\sigma_{i1}^2$, where
+$\theta_i = \arcsin\left(\sqrt{p_i}\right)$ and
+$\sigma_{i1}^2 = \frac{1}{4N_{i1}}$.
+
+Define Prior for $p_i$: We'll use the same Beta prior distribution as in
+the previous question.
+
+Update Prior with Data: We'll update the prior distribution using the
+observed data $X_{i1}$ to obtain the posterior distribution of $p_i$.
+
+Estimate $p_i$: We'll derive estimates of $p_i$ from the posterior
+distribution, similar to the previous question, by transforming the
+estimated $\theta_i$ back to obtain estimated $p_i = \sin^2(\theta_i)$.
+
+# 4)
+
+```{r}
+# Estimate Hi2/Ni2 from estimated pi (Step 2)
+estimated_Hi2_Ni2_2 <- estimate_pi(estimated_pi)
+
+# Estimate Hi2/Ni2 from estimated theta (Step 3)
+estimated_theta <- asin(sqrt(estimated_pi))
+estimated_Hi2_Ni2_3 <- sin(estimated_theta)^2
+
+# Print estimated Hi2/Ni2 from both approaches
+print(estimated_Hi2_Ni2_2)
+print(estimated_Hi2_Ni2_3)
+```
+
+We first estimate $\frac{H_{i2}}{N_{i2}}$ using the estimated values of
+$p_i$ obtained from step 2 (using the Bayesian method). Then, we
+estimate $\frac{H_{i2}}{N_{i2}}$ using the estimated values of
+$\theta_i$ obtained from step 3 (using the Bayesian hierarchical model).
+Finally, we print the estimated values of $\frac{H_{i2}}{N_{i2}}$ from
+both approaches.
+
+# 5
+
+```{r}
+# Calculate estimated pi based on data from the first period (tilde_pi)
+tilde_pi <- filtered_data$H.1 / filtered_data$AB.1
+
+# Calculate MSE using maximum likelihood estimates
+MLE_MSE <- sum((filtered_data$H.2 / filtered_data$AB.2 - tilde_pi)^2) / n
+
+# Calculate MSE using estimates from Step 2
+Bayesian_2_MSE <- sum((filtered_data$H.2 / filtered_data$AB.2 - estimated_Hi2_Ni2_2)^2) / n
+
+# Calculate MSE using estimates from Step 3
+Bayesian_3_MSE <- sum((filtered_data$H.2 / filtered_data$AB.2 - estimated_Hi2_Ni2_3)^2) / n
+
+# Print MSEs
+print(MLE_MSE)
+print(Bayesian_2_MSE)
+print(Bayesian_3_MSE)
+```
+
+We calculate $\tilde{p_i}$ based on the data from the first period. We
+compute the MSE using the estimated values $\tilde{p_i}$ and the actual
+values $\frac{H{i2}}{N{i2}}$ for each approach: maximum likelihood
+estimates, estimates from Step 2 (Bayesian method), and estimates from
+Step 3 (Bayesian hierarchical model). Finally, we print the MSEs for
+comparison.
+
+The variance in Mean Squared Errors (MSEs) among the estimators arises
+from various factors. Model complexity is heightened in Bayesian methods
+from steps 2 and 3 due to prior distributions and hierarchical modeling,
+potentially increasing MSEs if assumptions or priors are ill-suited or
+misspecified. The choice of priors in Bayesian methods impacts
+estimates, with uninformed or divergent priors potentially biasing
+estimates, unlike Maximum Likelihood Estimation (MLE). Incorporating
+data structure in the hierarchical model from step 3 may improve
+accuracy and lower MSEs compared to MLE and the Bayesian method from
+step 2. Bayesian methods, particularly hierarchical modeling, tend to be
+more robust to outliers and small samples, enhancing stability and
+reducing MSEs. These differences highlight the trade-offs between model
+complexity, priors, modeling flexibility, and robustness. The Bayesian
+hierarchical model from step 3 strikes a balance among these factors,
+offering more accurate estimates and lower MSEs compared to both MLE and
+the simpler Bayesian method from step 2.
+
+# 6)
+
+```{r}
+# Split the dataset into nonpitchers and pitchers
+nonpitchers_data <- filtered_data[filtered_data$Pitcher == 0, ]
+pitchers_data <- filtered_data[filtered_data$Pitcher == 1, ]
+
+# Define function to estimate pi
+estimate_pi <- function(alpha, beta, H, N) {
+  return((alpha + H) / (alpha + beta + N))
+}
+
+# Perform Bayesian analysis for nonpitchers (steps 2-5)
+# For simplicity, let's assume the same prior parameters for both subgroups
+nonpitchers_posterior_alpha <- alpha_prior + nonpitchers_data$H.1
+nonpitchers_posterior_beta <- beta_prior + nonpitchers_data$AB.1 - nonpitchers_data$H.1
+nonpitchers_estimated_pi <- estimate_pi(nonpitchers_posterior_alpha, nonpitchers_posterior_beta, nonpitchers_data$H.1, nonpitchers_data$AB.1)
+nonpitchers_estimated_theta <- asin(sqrt(nonpitchers_estimated_pi))
+nonpitchers_estimated_Hi2_Ni2_3 <- sin(nonpitchers_estimated_theta)^2
+nonpitchers_MSE <- sum((nonpitchers_data$H.2 / nonpitchers_data$AB.2 - nonpitchers_estimated_Hi2_Ni2_3)^2) / nrow(nonpitchers_data)
+
+# Perform Bayesian analysis for pitchers (steps 2-5)
+pitchers_posterior_alpha <- alpha_prior + pitchers_data$H.1
+pitchers_posterior_beta <- beta_prior + pitchers_data$AB.1 - pitchers_data$H.1
+pitchers_estimated_pi <- estimate_pi(pitchers_posterior_alpha, pitchers_posterior_beta, pitchers_data$H.1, pitchers_data$AB.1)
+pitchers_estimated_theta <- asin(sqrt(pitchers_estimated_pi))
+pitchers_estimated_Hi2_Ni2_3 <- sin(pitchers_estimated_theta)^2
+pitchers_MSE <- sum((pitchers_data$H.2 / pitchers_data$AB.2 - pitchers_estimated_Hi2_Ni2_3)^2) / nrow(pitchers_data)
+
+# Compare MSEs
+print("Nonpitchers MSE:")
+print(nonpitchers_MSE)
+print("Pitchers MSE:")
+print(pitchers_MSE)
+```
+
+We split the dataset into non-pitchers and pitchers. We perform Bayesian
+analysis separately for each subgroup (steps 2-5) and compute the MSEs.
+Finally, we compare the MSEs between non-pitchers and pitchers.
+
+The Mean Squared Error (MSE) for nonpitchers is slightly lower than that
+for the combined dataset (Step 5), indicating potentially more accurate
+predictions of $\frac{H{i2}}{N{i2}}$. This could be due to nonpitchers
+having a more uniform skill set, allowing for better estimation when
+modeled separately. Conversely, the MSE for pitchers is slightly higher,
+suggesting that separate modeling might yield slightly less accurate
+predictions of $\frac{H{i2}}{N{i2}}$ due to their specialized skills and
+smaller sample size. Heterogeneity in skill levels between pitchers and
+nonpitchers affects modeling effectiveness, with nonpitchers likely
+benefiting more from separate modeling due to their more consistent
+skill distribution. The smaller sample size for pitchers leads to
+increased uncertainty and higher MSEs, while the choice of prior
+distributions in Bayesian methods also impacts accuracy. Overall, while
+subgroup modeling may offer some advantages, the differences in MSEs are
+minor, requiring consideration of model complexity, sample size, and
+skill level heterogeneity when deciding whether to model subgroups
+separately.
