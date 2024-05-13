@@ -1,3 +1,5 @@
+STAT 1651 - Predicting MLB player performance using Bayesian methods.
+
 The project revolves around analyzing batting records of Major League baseball players over a single season to estimate their latent ability and predict performance using Bayesian methods. Inspired by Brown's (2008) paper on in-season prediction of batting averages, the project involves several tasks:
 
   1. Data preprocessing: Exclude players with insufficient at-bats (AB) in either period and calculate the remaining players.
